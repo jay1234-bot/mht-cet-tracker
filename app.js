@@ -1091,6 +1091,7 @@ async function searchMusic() {
   if (resultsEl) resultsEl.innerHTML = '<div style="text-align:center;padding:10px;color:var(--text-muted)">🔍 Searching...</div>';
 
   // YOUR VERCEL URL — update this after deploying
+  // YOUR VERCEL URL — update this after deploying
   const API_BASE = window.YT_API || 'https://yt-api-theta.vercel.app';
 
   try {
@@ -1135,37 +1136,30 @@ async function playSong(index) {
   document.getElementById('player-artist').textContent = song.artist || '';
 
   try {
-    // BillaSpace API — direct call, returns download_url
-    const apiUrl = `https://apex.spacebilla01.workers.dev/yt?id=${song.id}&format=mp3`;
-    const res = await fetch(apiUrl);
-    if (!res.ok) throw new Error('API ' + res.status);
+    // Go through our Vercel proxy — no CORS issues
+    const API_BASE = 'https://yt-api-theta.vercel.app';
+    const res = await fetch(`${API_BASE}/api/stream?id=${song.id}`);
+    if (!res.ok) throw new Error('Proxy error ' + res.status);
     const data = await res.json();
-    if (!data.download_url) throw new Error(data.error || 'No URL');
+    if (!data.success || !data.streamUrl) throw new Error(data.details || 'No stream URL');
 
-    const title = data.title || song.title;
-    const thumb = data.thumbnail || song.thumbnail || '';
-
-    document.getElementById('player-title').textContent = title;
+    document.getElementById('player-title').textContent = data.title || song.title;
     document.getElementById('player-artist').textContent = song.artist || 'YouTube';
     const artEl = document.getElementById('player-art');
-    if (thumb) artEl.src = thumb;
+    artEl.src = data.thumbnail || song.thumbnail || 'https://placehold.co/100x100/667eea/fff?text=♪';
 
-    // Use direct stream URL
-    a.src = data.download_url;
+    a.src = data.streamUrl;
     a.load();
-    const playPromise = a.play();
-    if (playPromise) {
-      playPromise.then(() => {
-        isPlaying = true;
-        document.getElementById('play-pause-btn').textContent = '⏸';
-        artEl.classList.add('playing');
-      }).catch(err => {
-        // Autoplay blocked — show play button, user can click
-        isPlaying = false;
-        document.getElementById('play-pause-btn').textContent = '▶';
-        document.getElementById('player-title').textContent = title + ' (click ▶ to play)';
-      });
-    }
+    a.play().then(() => {
+      isPlaying = true;
+      document.getElementById('play-pause-btn').textContent = '⏸';
+      artEl.classList.add('playing');
+    }).catch(() => {
+      // Autoplay blocked — user must click play
+      isPlaying = false;
+      document.getElementById('play-pause-btn').textContent = '▶';
+      document.getElementById('player-title').textContent = (data.title || song.title) + ' ← click ▶';
+    });
   } catch(e) {
     console.error('Play error:', e);
     document.getElementById('player-title').textContent = '❌ ' + e.message;
