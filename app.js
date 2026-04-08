@@ -1126,60 +1126,28 @@ async function playSong(index) {
   if (index < 0 || index >= playlist.length) return;
   currentTrack = index;
   const song = playlist[index];
-  const a = getAudio();
-  if (!a) return;
 
   document.querySelectorAll('.search-result-item').forEach((el, i) => {
     el.style.background = i === index ? 'rgba(102,126,234,0.25)' : '';
   });
-  document.getElementById('player-title').textContent = '⏳ Loading...';
-  document.getElementById('player-artist').textContent = song.artist || '';
 
-  try {
-    // Go through our Vercel proxy — no CORS issues
-    const API_BASE = 'https://yt-api-theta.vercel.app';
-    const res = await fetch(`${API_BASE}/api/stream?id=${song.id}`);
-    if (!res.ok) throw new Error('Proxy error ' + res.status);
-    const data = await res.json();
-    if (!data.success || !data.streamUrl) throw new Error(data.details || 'No stream URL');
-
-    document.getElementById('player-title').textContent = data.title || song.title;
-    document.getElementById('player-artist').textContent = song.artist || 'YouTube';
-    const artEl = document.getElementById('player-art');
-    artEl.src = data.thumbnail || song.thumbnail || 'https://placehold.co/100x100/667eea/fff?text=♪';
-
-    a.src = data.streamUrl;
-    a.load();
-    a.play().then(() => {
-      isPlaying = true;
-      document.getElementById('play-pause-btn').textContent = '⏸';
-      artEl.classList.add('playing');
-    }).catch(() => {
-      // Autoplay blocked — user must click play
-      isPlaying = false;
-      document.getElementById('play-pause-btn').textContent = '▶';
-      document.getElementById('player-title').textContent = (data.title || song.title) + ' ← click ▶';
-    });
-  } catch(e) {
-    console.error('Play error:', e);
-    document.getElementById('player-title').textContent = '❌ ' + e.message;
+  // Use YouTube iframe embed — works everywhere, no CORS, no backend needed
+  const iframe = document.getElementById('yt-iframe');
+  const wrap = document.getElementById('yt-player-wrap');
+  if (iframe && wrap) {
+    iframe.src = `https://www.youtube.com/embed/${song.id}?autoplay=1&rel=0&modestbranding=1`;
+    wrap.style.display = 'block';
   }
+
+  document.getElementById('player-title').textContent = song.title;
+  document.getElementById('player-artist').textContent = song.artist || 'YouTube';
+  isPlaying = true;
 }
 
 function togglePlay() {
-  const a = getAudio();
-  if (!a || !a.src) return;
-  if (isPlaying) {
-    a.pause();
-    isPlaying = false;
-    document.getElementById('play-pause-btn').textContent = '▶';
-    document.getElementById('player-art').classList.remove('playing');
-  } else {
-    a.play();
-    isPlaying = true;
-    document.getElementById('play-pause-btn').textContent = '⏸';
-    document.getElementById('player-art').classList.add('playing');
-  }
+  // With iframe, user controls via YouTube player UI
+  const wrap = document.getElementById('yt-player-wrap');
+  if (wrap) wrap.style.display = wrap.style.display === 'none' ? 'block' : 'none';
 }
 
 function nextSong() {
