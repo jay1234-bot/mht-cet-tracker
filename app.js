@@ -1132,29 +1132,40 @@ async function playSong(index) {
     el.style.background = i === index ? 'rgba(102,126,234,0.25)' : '';
   });
   document.getElementById('player-title').textContent = '⏳ Loading...';
-  document.getElementById('player-artist').textContent = '';
+  document.getElementById('player-artist').textContent = song.artist || '';
 
   try {
-    // BillaSpace API — free, no auth, direct stream
+    // BillaSpace API — direct call, returns download_url
     const apiUrl = `https://apex.spacebilla01.workers.dev/yt?id=${song.id}&format=mp3`;
     const res = await fetch(apiUrl);
-    if (!res.ok) throw new Error('API error ' + res.status);
+    if (!res.ok) throw new Error('API ' + res.status);
     const data = await res.json();
+    if (!data.download_url) throw new Error(data.error || 'No URL');
 
-    if (data.status !== 'success' || !data.download_url) {
-      throw new Error(data.error || 'No download URL');
-    }
+    const title = data.title || song.title;
+    const thumb = data.thumbnail || song.thumbnail || '';
 
-    document.getElementById('player-title').textContent = data.title || song.title;
+    document.getElementById('player-title').textContent = title;
     document.getElementById('player-artist').textContent = song.artist || 'YouTube';
     const artEl = document.getElementById('player-art');
-    artEl.src = data.thumbnail || song.thumbnail || 'https://placehold.co/120x120/667eea/fff?text=♪';
+    if (thumb) artEl.src = thumb;
 
+    // Use direct stream URL
     a.src = data.download_url;
-    await a.play();
-    isPlaying = true;
-    document.getElementById('play-pause-btn').textContent = '⏸';
-    artEl.classList.add('playing');
+    a.load();
+    const playPromise = a.play();
+    if (playPromise) {
+      playPromise.then(() => {
+        isPlaying = true;
+        document.getElementById('play-pause-btn').textContent = '⏸';
+        artEl.classList.add('playing');
+      }).catch(err => {
+        // Autoplay blocked — show play button, user can click
+        isPlaying = false;
+        document.getElementById('play-pause-btn').textContent = '▶';
+        document.getElementById('player-title').textContent = title + ' (click ▶ to play)';
+      });
+    }
   } catch(e) {
     console.error('Play error:', e);
     document.getElementById('player-title').textContent = '❌ ' + e.message;
