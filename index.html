@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MHT-CET 2027 Study Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<!-- Animated background blobs -->
+<div class="bg-blobs">
+  <div class="blob blob1"></div>
+  <div class="blob blob2"></div>
+  <div class="blob blob3"></div>
+</div>
+
+<!-- Top Banner -->
+<div class="top-banner">
+  <span class="banner-emoji">🔥</span>
+  <span>Tu ya toh CET phodega… ya excuses banayega.</span>
+  <span class="banner-emoji">🔥</span>
+</div>
+
+<!-- App Layout -->
+<div class="app-layout">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <span class="logo-icon">🎯</span>
+        <div>
+          <div class="logo-title">CET Tracker</div>
+          <div class="logo-sub">MHT-CET 2027</div>
+        </div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-item active" data-page="dashboard" onclick="showPage('dashboard')">
+        <span class="nav-icon">🏠</span><span>Dashboard</span>
+      </a>
+      <a class="nav-item" data-page="session" onclick="showPage('session')">
+        <span class="nav-icon">⏱️</span><span>Study Session</span>
+      </a>
+      <a class="nav-item" data-page="focus" onclick="showPage('focus')">
+        <span class="nav-icon">🎯</span><span>Focus Mode</span>
+      </a>
+      <a class="nav-item" data-page="calendar" onclick="showPage('calendar')">
+        <span class="nav-icon">📅</span><span>Calendar</span>
+      </a>
+      <a class="nav-item" data-page="tasks" onclick="showPage('tasks')">
+        <span class="nav-icon">✅</span><span>Tasks</span>
+      </a>
+      <a class="nav-item" data-page="countdown" onclick="showPage('countdown')">
+        <span class="nav-icon">⏳</span><span>Countdown</span>
+      </a>
+      <a class="nav-item" data-page="goals" onclick="showPage('goals')">
+        <span class="nav-icon">🏆</span><span>Goals</span>
+      </a>
+      <a class="nav-item" data-page="phases" onclick="showPage('phases')">
+        <span class="nav-icon">📈</span><span>Phases</span>
+      </a>
+      <a class="nav-item" data-page="analytics" onclick="showPage('analytics')">
+        <span class="nav-icon">📊</span><span>Analytics</span>
+      </a>
+      <a class="nav-item" data-page="strategy" onclick="showPage('strategy')">
+        <span class="nav-icon">🧠</span><span>Strategy</span>
+      </a>
+      <a class="nav-item" data-page="motivation" onclick="showPage('motivation')">
+        <span class="nav-icon">💪</span><span>Motivation</span>
+      </a>
+      <a class="nav-item" data-page="aicoach" onclick="showPage('aicoach')">
+        <span class="nav-icon">🤖</span><span>AI Coach</span>
+      </a>
+      <a class="nav-item" data-page="settings" onclick="showPage('settings')">
+        <span class="nav-icon">⚙️</span><span>Settings</span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="xp-bar-wrap">
+        <div class="xp-label"><span id="sb-level">Beginner</span> <span id="sb-xp">0 XP</span></div>
+        <div class="xp-bar"><div class="xp-fill" id="sb-xp-fill"></div></div>
+      </div>
+      <button class="dark-toggle" onclick="toggleDark()" title="Toggle Dark Mode">🌙</button>
+    </div>
+  </aside>
+
+  <!-- Mobile menu toggle -->
+  <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <!-- ===== DASHBOARD ===== -->
+    <section class="page active" id="page-dashboard">
+      <div class="page-header">
+        <h1>Dashboard <span class="wave">👋</span></h1>
+        <p class="page-sub" id="dash-date"></p>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card glass">
+          <div class="stat-icon bounce">⏱️</div>
+          <div class="stat-val" id="dash-today-hours">0h 0m</div>
+          <div class="stat-label">Today's Study</div>
+        </div>
+        <div class="stat-card glass">
+          <div class="stat-icon pulse">🔥</div>
+          <div class="stat-val" id="dash-streak">0</div>
+          <div class="stat-label">Day Streak</div>
+        </div>
+        <div class="stat-card glass">
+          <div class="stat-icon spin">⭐</div>
+          <div class="stat-val" id="dash-xp">0</div>
+          <div class="stat-label">Total XP</div>
+        </div>
+        <div class="stat-card glass">
+          <div class="stat-icon bounce">📚</div>
+          <div class="stat-val" id="dash-sessions">0</div>
+          <div class="stat-label">Sessions Done</div>
+        </div>
+      </div>
+
+      <!-- Quick Pomodoro -->
+      <div class="section-title">🍅 Pomodoro Timer</div>
+      <div class="glass card pomodoro-card">
+        <div class="pomo-display" id="pomo-display">25:00</div>
+        <div class="pomo-mode" id="pomo-mode">Focus</div>
+        <div class="pomo-controls">
+          <button class="btn-glass" onclick="startPomo()">▶ Start</button>
+          <button class="btn-glass" onclick="pausePomo()">⏸ Pause</button>
+          <button class="btn-glass" onclick="resetPomo()">↺ Reset</button>
+        </div>
+        <div class="pomo-cycles">Cycles: <span id="pomo-cycles">0</span></div>
+      </div>
+
+      <!-- Daily Missions -->
+      <div class="section-title">🎯 Daily Missions</div>
+      <div class="glass card" id="daily-missions-dash"></div>
+
+      <!-- Streak & Badges -->
+      <div class="section-title">🏅 Achievements</div>
+      <div class="badges-grid" id="badges-grid"></div>
+    </section>
+
+    <!-- ===== STUDY SESSION ===== -->
+    <section class="page" id="page-session">
+      <div class="page-header">
+        <h1>⏱️ Study Session</h1>
+        <p class="page-sub">Track your focused study time</p>
+      </div>
+      <div class="glass card session-card">
+        <div class="timer-display" id="session-timer">00:00:00</div>
+        <div class="xp-earned">+<span id="session-xp">0</span> XP earned</div>
+        <div class="session-inputs">
+          <select class="glass-input" id="session-subject">
+            <option value="">Select Subject</option>
+            <option>Physics</option>
+            <option>Chemistry</option>
+            <option>Mathematics</option>
+            <option>Biology</option>
+          </select>
+          <input class="glass-input" id="session-topic" placeholder="Topic (e.g. Kinematics)" type="text"/>
+        </div>
+        <div class="session-controls">
+          <button class="btn-primary" id="btn-start-session" onclick="startSession()">▶ Start</button>
+          <button class="btn-glass" id="btn-pause-session" onclick="pauseSession()" disabled>⏸ Pause</button>
+          <button class="btn-danger" id="btn-stop-session" onclick="stopSession()" disabled>⏹ Stop</button>
+        </div>
+      </div>
+      <div class="section-title">📋 Session History</div>
+      <div class="glass card" id="session-history"></div>
+    </section>
+
+    <!-- ===== FOCUS MODE ===== -->
+    <section class="page" id="page-focus">
+      <div class="page-header">
+        <h1>🎯 Focus Mode</h1>
+        <p class="page-sub">Distraction-free deep work</p>
+      </div>
+      <div class="focus-layout">
+        <div class="glass card focus-timer-card">
+          <div class="focus-timer" id="focus-timer">00:00:00</div>
+          <div class="focus-subject" id="focus-subject-label">Select a subject to begin</div>
+          <div class="focus-controls">
+            <button class="btn-primary" onclick="toggleFocusFullscreen()">⛶ Fullscreen</button>
+          </div>
+        </div>
+        <!-- JioSaavn Music Player -->
+        <div class="glass card music-player">
+          <div class="player-header">🎵 Music Player</div>
+          <div class="player-art-wrap">
+            <img id="player-art" src="https://via.placeholder.com/120/667eea/ffffff?text=♪" alt="cover" class="player-art"/>
+            <div class="player-art-overlay"></div>
+          </div>
+          <div class="player-info">
+            <div class="player-title" id="player-title">Search a song to play</div>
+            <div class="player-artist" id="player-artist">—</div>
+          </div>
+          <div class="player-progress-wrap">
+            <span id="player-current">0:00</span>
+            <input type="range" id="player-progress" class="player-progress" value="0" min="0" max="100" oninput="seekSong(this.value)"/>
+            <span id="player-duration">0:00</span>
+          </div>
+          <div class="player-controls">
+            <button class="player-btn" onclick="prevSong()">⏮</button>
+            <button class="player-btn play-btn" id="play-pause-btn" onclick="togglePlay()">▶</button>
+            <button class="player-btn" onclick="nextSong()">⏭</button>
+          </div>
+          <div class="player-search">
+            <input class="glass-input" id="music-search" placeholder="Search songs..." type="text"/>
+            <button class="btn-glass" onclick="searchMusic()">🔍</button>
+          </div>
+          <div class="search-results" id="search-results"></div>
+        </div>
+      </div>
+      <!-- Fullscreen overlay -->
+      <div class="fullscreen-overlay" id="fullscreen-overlay">
+        <div class="fs-timer" id="fs-timer">00:00:00</div>
+        <div class="fs-label">Deep Focus Mode</div>
+        <button class="btn-glass" onclick="exitFullscreen()">✕ Exit</button>
+      </div>
+    </section>
+
+    <!-- ===== CALENDAR ===== -->
+    <section class="page" id="page-calendar">
+      <div class="page-header">
+        <h1>📅 Study Calendar</h1>
+        <p class="page-sub">Your study history at a glance</p>
+      </div>
+      <div class="glass card calendar-card">
+        <div class="cal-nav">
+          <button class="btn-glass" onclick="calPrev()">‹</button>
+          <div class="cal-month" id="cal-month-label"></div>
+          <button class="btn-glass" onclick="calNext()">›</button>
+        </div>
+        <div class="cal-weekdays">
+          <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+        </div>
+        <div class="cal-grid" id="cal-grid"></div>
+      </div>
+      <div class="cal-legend">
+        <span class="legend-dot green"></span> Studied
+        <span class="legend-dot red"></span> Missed
+        <span class="legend-dot blue"></span> Today
+      </div>
+    </section>
+
+    <!-- ===== TASKS ===== -->
+    <section class="page" id="page-tasks">
+      <div class="page-header">
+        <h1>✅ Tasks</h1>
+        <p class="page-sub">Stay on top of your to-dos</p>
+      </div>
+      <div class="glass card">
+        <div class="task-input-row">
+          <input class="glass-input" id="task-input" placeholder="Add a new task..." type="text" onkeydown="if(event.key==='Enter')addTask()"/>
+          <select class="glass-input" id="task-priority" style="width:130px">
+            <option value="high">🔴 High</option>
+            <option value="medium" selected>🟡 Medium</option>
+            <option value="low">🟢 Low</option>
+          </select>
+          <button class="btn-primary" onclick="addTask()">+ Add</button>
+        </div>
+        <div id="task-list"></div>
+      </div>
+      <div class="section-title">📓 Mistake Notebook</div>
+      <div class="glass card">
+        <div class="task-input-row">
+          <input class="glass-input" id="mistake-input" placeholder="Note a mistake or concept to revisit..." type="text"/>
+          <select class="glass-input" id="mistake-subject" style="width:140px">
+            <option>Physics</option>
+            <option>Chemistry</option>
+            <option>Mathematics</option>
+            <option>Biology</option>
+          </select>
+          <button class="btn-primary" onclick="addMistake()">+ Add</button>
+        </div>
+        <div id="mistake-list"></div>
+      </div>
+    </section>
+
+    <!-- ===== COUNTDOWN ===== -->
+    <section class="page" id="page-countdown">
+      <div class="page-header">
+        <h1>⏳ Countdown to CET 2027</h1>
+        <p class="page-sub">Every second counts</p>
+      </div>
+      <div class="glass card countdown-card">
+        <div class="countdown-grid">
+          <div class="cd-unit"><div class="cd-val" id="cd-days">---</div><div class="cd-label">Days</div></div>
+          <div class="cd-unit"><div class="cd-val" id="cd-hours">--</div><div class="cd-label">Hours</div></div>
+          <div class="cd-unit"><div class="cd-val" id="cd-mins">--</div><div class="cd-label">Minutes</div></div>
+          <div class="cd-unit"><div class="cd-val" id="cd-secs">--</div><div class="cd-label">Seconds</div></div>
+        </div>
+        <div class="cd-message" id="cd-message"></div>
+        <div class="cd-progress-wrap">
+          <div class="cd-progress-label">Journey Progress</div>
+          <div class="cd-progress-bar"><div class="cd-progress-fill" id="cd-progress-fill"></div></div>
+          <div class="cd-progress-pct" id="cd-progress-pct">0%</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== GOALS ===== -->
+    <section class="page" id="page-goals">
+      <div class="page-header">
+        <h1>🏆 Goals</h1>
+        <p class="page-sub">Set targets, crush them</p>
+      </div>
+      <div class="glass card">
+        <div class="task-input-row">
+          <input class="glass-input" id="goal-input" placeholder="Add a goal..." type="text"/>
+          <input class="glass-input" id="goal-target" placeholder="Target (e.g. 100 hrs)" type="text" style="width:160px"/>
+          <button class="btn-primary" onclick="addGoal()">+ Add</button>
+        </div>
+        <div id="goal-list"></div>
+      </div>
+      <div class="section-title">💌 Future Self Message</div>
+      <div class="glass card">
+        <textarea class="glass-input" id="future-msg" rows="4" placeholder="Write a message to your future self after CET..."></textarea>
+        <button class="btn-primary" style="margin-top:10px" onclick="saveFutureMsg()">💾 Save Message</button>
+        <div id="future-msg-display" class="future-msg-display"></div>
+      </div>
+      <div class="section-title">📔 Daily Reflection</div>
+      <div class="glass card">
+        <textarea class="glass-input" id="reflection-input" rows="3" placeholder="How was today's study session? What did you learn?"></textarea>
+        <button class="btn-primary" style="margin-top:10px" onclick="saveReflection()">💾 Save Reflection</button>
+        <div id="reflection-list"></div>
+      </div>
+    </section>
+
+    <!-- ===== PHASES ===== -->
+    <section class="page" id="page-phases">
+      <div class="page-header">
+        <h1>📈 Study Phases</h1>
+        <p class="page-sub">Your roadmap to CET 2027</p>
+      </div>
+      <div class="phase-cards" id="phase-cards">
+        <div class="glass card phase-card" id="phase1-card">
+          <div class="phase-badge">Phase 1</div>
+          <h2>📚 Preparation</h2>
+          <p>Now → Jan 31, 2027</p>
+          <p>Build strong foundations in all subjects. Cover full syllabus, practice problems, and build consistency.</p>
+          <div class="phase-progress-bar"><div class="phase-progress-fill" id="phase1-fill"></div></div>
+          <div id="phase1-pct" class="phase-pct"></div>
+        </div>
+        <div class="glass card phase-card" id="phase2-card">
+          <div class="phase-badge phase2-badge">Phase 2</div>
+          <h2>🔁 Revision</h2>
+          <p>Feb 1, 2027 → Exam Day</p>
+          <p>Intensive revision, mock tests, weak area focus, and final sprint to exam day.</p>
+          <div class="phase-progress-bar"><div class="phase-progress-fill phase2-fill" id="phase2-fill"></div></div>
+          <div id="phase2-pct" class="phase-pct"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== ANALYTICS ===== -->
+    <section class="page" id="page-analytics">
+      <div class="page-header">
+        <h1>📊 Analytics</h1>
+        <p class="page-sub">Understand your study patterns</p>
+      </div>
+      <div class="analytics-grid">
+        <div class="glass card">
+          <div class="chart-title">📅 Daily Hours (Last 7 Days)</div>
+          <canvas id="chart-daily" height="200"></canvas>
+        </div>
+        <div class="glass card">
+          <div class="chart-title">📚 Subject Distribution</div>
+          <canvas id="chart-subject" height="200"></canvas>
+        </div>
+      </div>
+      <div class="glass card weekly-summary">
+        <div class="section-title">📋 Weekly Summary</div>
+        <div class="summary-grid" id="weekly-summary"></div>
+      </div>
+    </section>
+
+    <!-- ===== STRATEGY ===== -->
+    <section class="page" id="page-strategy">
+      <div class="page-header">
+        <h1>🧠 Strategy</h1>
+        <p class="page-sub">Smart study planning</p>
+      </div>
+      <div class="strategy-grid">
+        <div class="glass card">
+          <h3>📌 Subject Priority</h3>
+          <div class="priority-list">
+            <div class="priority-item"><span>🔴 Physics</span><span>High Priority</span></div>
+            <div class="priority-item"><span>🟡 Chemistry</span><span>Medium Priority</span></div>
+            <div class="priority-item"><span>🔴 Mathematics</span><span>High Priority</span></div>
+            <div class="priority-item"><span>🟢 Biology</span><span>Low Priority</span></div>
+          </div>
+        </div>
+        <div class="glass card">
+          <h3>⏰ Recommended Schedule</h3>
+          <div class="schedule-list">
+            <div class="schedule-item"><span>6:00 AM</span><span>Morning Revision</span></div>
+            <div class="schedule-item"><span>9:00 AM</span><span>New Concepts</span></div>
+            <div class="schedule-item"><span>2:00 PM</span><span>Practice Problems</span></div>
+            <div class="schedule-item"><span>6:00 PM</span><span>Mock Tests</span></div>
+            <div class="schedule-item"><span>9:00 PM</span><span>Quick Review</span></div>
+          </div>
+        </div>
+        <div class="glass card">
+          <h3>🎯 Hardcore Mode</h3>
+          <p style="opacity:0.7;margin-bottom:12px">Lock yourself in. No distractions allowed.</p>
+          <div class="hardcore-toggle-wrap">
+            <label class="toggle-switch">
+              <input type="checkbox" id="hardcore-toggle" onchange="toggleHardcore()"/>
+              <span class="toggle-slider"></span>
+            </label>
+            <span id="hardcore-label">OFF</span>
+          </div>
+          <div id="hardcore-msg" class="hardcore-msg" style="display:none">
+            🔒 HARDCORE MODE ACTIVE — Phone down. No social media. Just you and the books. CET waits for no one.
+          </div>
+        </div>
+        <div class="glass card">
+          <h3>📊 Study Tips</h3>
+          <ul class="tips-list">
+            <li>Use active recall over passive reading</li>
+            <li>Spaced repetition for formulas</li>
+            <li>Solve PYQs daily</li>
+            <li>Take breaks every 45 mins</li>
+            <li>Sleep 7-8 hours for memory consolidation</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== MOTIVATION ===== -->
+    <section class="page" id="page-motivation">
+      <div class="page-header">
+        <h1>💪 Motivation</h1>
+        <p class="page-sub">Keep the fire burning</p>
+      </div>
+      <div class="glass card motivation-card">
+        <div class="quote-display" id="quote-display"></div>
+        <button class="btn-glass" onclick="newQuote()">🔄 New Quote</button>
+      </div>
+      <div class="glass card">
+        <h3>🖼️ Vision Board</h3>
+        <p style="opacity:0.7;margin-bottom:12px">Upload an image that motivates you</p>
+        <input type="file" id="vision-upload" accept="image/*" onchange="uploadVision()" style="display:none"/>
+        <button class="btn-glass" onclick="document.getElementById('vision-upload').click()">📷 Upload Image</button>
+        <div id="vision-display"></div>
+      </div>
+      <div class="glass card">
+        <h3>✍️ Personal Note</h3>
+        <textarea class="glass-input" id="personal-note" rows="3" placeholder="Write your personal motivation note..."></textarea>
+        <button class="btn-primary" style="margin-top:10px" onclick="savePersonalNote()">💾 Save</button>
+        <div id="personal-note-display" class="personal-note-display"></div>
+      </div>
+    </section>
+
+    <!-- ===== AI COACH ===== -->
+    <section class="page" id="page-aicoach">
+      <div class="page-header">
+        <h1>🤖 AI Coach</h1>
+        <p class="page-sub">Your personal study assistant</p>
+      </div>
+      <div class="glass card ai-chat-card">
+        <div class="chat-messages" id="chat-messages">
+          <div class="chat-msg bot">
+            <span class="chat-avatar">🤖</span>
+            <div class="chat-bubble">Arre bhai! Main hoon tera <strong>Guru</strong> — tera personal MHT-CET 2027 coach! 🔥<br><br>Padhai ke baare mein kuch bhi pooch — Physics, Chemistry, Maths, ya bas motivation chahiye — main hoon na! Bol kya help chahiye? 💪</div>
+          </div>
+        </div>
+        <div class="chat-prompts">
+          <button class="prompt-chip" onclick="sendPrompt('Bhai Physics ka study plan bana de mujhe')">📚 Physics Plan</button>
+          <button class="prompt-chip" onclick="sendPrompt('Chemistry mein weak hoon, kya karun?')">⚗️ Chemistry Help</button>
+          <button class="prompt-chip" onclick="sendPrompt('MHT-CET 2027 crack karne ki best strategy kya hai?')">🎯 CET Strategy</button>
+          <button class="prompt-chip" onclick="sendPrompt('Bhai bahut demotivated feel ho raha hai, kuch bol')">💪 Motivate Kar</button>
+          <button class="prompt-chip" onclick="sendPrompt('Maths mein integration aur differentiation kaise strong karun?')">📐 Maths Tips</button>
+          <button class="prompt-chip" onclick="sendPrompt('Padhai mein focus nahi lagta, kya karun?')">🧠 Focus Tips</button>
+        </div>
+        <div class="chat-input-row">
+          <input class="glass-input" id="chat-input" placeholder="Ask your AI coach..." type="text"/>
+          <button class="btn-primary" id="chat-send-btn">Send ➤</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== SETTINGS ===== -->
+    <section class="page" id="page-settings">
+      <div class="page-header">
+        <h1>⚙️ Settings</h1>
+        <p class="page-sub">Customize your experience</p>
+      </div>
+      <div class="settings-grid">
+        <div class="glass card">
+          <h3>🎨 Appearance</h3>
+          <div class="setting-row">
+            <span>Dark Mode</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="dark-mode-toggle" onchange="toggleDark()"/>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <span>Accent Color</span>
+            <input type="color" id="accent-color" value="#667eea" onchange="setAccent(this.value)" class="color-picker"/>
+          </div>
+        </div>
+        <div class="glass card">
+          <h3>⏱️ Pomodoro Settings</h3>
+          <div class="setting-row">
+            <span>Focus Duration (min)</span>
+            <input type="number" class="glass-input" id="pomo-focus-dur" value="25" min="1" max="90" style="width:80px"/>
+          </div>
+          <div class="setting-row">
+            <span>Break Duration (min)</span>
+            <input type="number" class="glass-input" id="pomo-break-dur" value="5" min="1" max="30" style="width:80px"/>
+          </div>
+          <button class="btn-primary" onclick="savePomoSettings()">Save</button>
+        </div>
+        <div class="glass card">
+          <h3>🎯 Study Target</h3>
+          <div class="setting-row">
+            <span>Daily Goal (hours)</span>
+            <input type="number" class="glass-input" id="daily-goal-input" value="6" min="1" max="16" style="width:80px"/>
+          </div>
+          <button class="btn-primary" onclick="saveDailyGoal()">Save</button>
+        </div>
+        <div class="glass card">
+          <h3>🗑️ Data Management</h3>
+          <p style="opacity:0.7;margin-bottom:12px">Clear all stored data (irreversible)</p>
+          <button class="btn-danger" onclick="clearAllData()">🗑️ Clear All Data</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<audio id="audio-player" style="display:none"></audio>
+<script src="app.js"></script>
+</body>
+</html>
