@@ -1128,33 +1128,36 @@ async function playSong(index) {
   const a = getAudio();
   if (!a) return;
 
-  const API_BASE = 'https://yt-api-theta.vercel.app';
-
   document.querySelectorAll('.search-result-item').forEach((el, i) => {
     el.style.background = i === index ? 'rgba(102,126,234,0.25)' : '';
   });
   document.getElementById('player-title').textContent = '⏳ Loading...';
+  document.getElementById('player-artist').textContent = '';
 
   try {
-    const res = await fetch(`${API_BASE}/api/stream?id=${song.id}`);
-    if (!res.ok) throw new Error('Stream API error ' + res.status);
+    // BillaSpace API — free, no auth, direct stream
+    const apiUrl = `https://apex.spacebilla01.workers.dev/yt?id=${song.id}&format=mp3`;
+    const res = await fetch(apiUrl);
+    if (!res.ok) throw new Error('API error ' + res.status);
     const data = await res.json();
 
-    if (!data.success || !data.streamUrl) throw new Error('No stream URL');
+    if (data.status !== 'success' || !data.download_url) {
+      throw new Error(data.error || 'No download URL');
+    }
 
     document.getElementById('player-title').textContent = data.title || song.title;
-    document.getElementById('player-artist').textContent = data.artist || song.artist;
+    document.getElementById('player-artist').textContent = song.artist || 'YouTube';
     const artEl = document.getElementById('player-art');
-    if (data.thumbnail || song.thumbnail) artEl.src = data.thumbnail || song.thumbnail;
+    artEl.src = data.thumbnail || song.thumbnail || 'https://placehold.co/120x120/667eea/fff?text=♪';
 
-    a.src = data.streamUrl;
+    a.src = data.download_url;
     await a.play();
     isPlaying = true;
     document.getElementById('play-pause-btn').textContent = '⏸';
     artEl.classList.add('playing');
   } catch(e) {
     console.error('Play error:', e);
-    document.getElementById('player-title').textContent = '❌ Playback error — try another song';
+    document.getElementById('player-title').textContent = '❌ ' + e.message;
   }
 }
 
