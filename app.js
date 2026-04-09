@@ -791,6 +791,18 @@ function loadSettings() {
   if (dm) dm.checked = state.settings.dark;
   const ac = document.getElementById('accent-color');
   if (ac) ac.value = state.settings.accent;
+  const uid = document.getElementById('setting-uid');
+  if (uid) uid.value = getUID();
+}
+
+function updateUID(val) {
+  if (val.trim().length > 3) {
+    localStorage.setItem('cet_uid', val.trim());
+    // Reload from cloud with new UID
+    loadFromCloud().then(synced => {
+      if (synced) { initDashboard(); updateXPUI(); showAchievementPopup('🔄 Synced!', 'Data loaded from cloud', '☁️'); }
+    });
+  }
 }
 
 function clearAllData() {
@@ -1206,7 +1218,14 @@ function renderMotivation() {
   }
   if (state.visionImage) {
     const vd = document.getElementById('vision-display');
-    if (vd) vd.innerHTML = `<img src="${state.visionImage}" alt="Vision"/>`;
+    const ph = document.getElementById('vision-placeholder');
+    if (ph) ph.style.display = 'none';
+    if (vd && !vd.querySelector('img')) {
+      const img = document.createElement('img');
+      img.src = state.visionImage;
+      img.style.cssText = 'width:100%;height:200px;object-fit:cover;border-radius:12px;display:block;';
+      vd.appendChild(img);
+    }
   }
 }
 
@@ -1238,7 +1257,18 @@ function uploadVision() {
     state.visionImage = e.target.result;
     saveState();
     const vd = document.getElementById('vision-display');
-    if (vd) vd.innerHTML = `<img src="${e.target.result}" alt="Vision" style="width:100%;max-height:300px;object-fit:cover;border-radius:12px;margin-top:12px"/>`;
+    const ph = document.getElementById('vision-placeholder');
+    if (ph) ph.style.display = 'none';
+    if (vd) {
+      // Remove old img if any
+      const old = vd.querySelector('img');
+      if (old) old.remove();
+      const img = document.createElement('img');
+      img.src = e.target.result;
+      img.style.cssText = 'width:100%;height:200px;object-fit:cover;border-radius:12px;display:block;';
+      vd.appendChild(img);
+    }
+    showAchievementPopup('📸 Vision saved!', 'Roz dekh isko — yaad rakhega kyun padh raha hai', '❤️');
   };
   reader.readAsDataURL(file);
 }
