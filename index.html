@@ -69,6 +69,9 @@
       <a class="nav-item" data-page="reports" onclick="showPage('reports')">
         <span class="nav-icon">📋</span><span>Monthly Reports</span>
       </a>
+      <a class="nav-item" data-page="gallery" onclick="showPage('gallery')">
+        <span class="nav-icon">🖼️</span><span>Gallery</span>
+      </a>
       <a class="nav-item" data-page="strategy" onclick="showPage('strategy')">
         <span class="nav-icon">🧠</span><span>Strategy</span>
       </a>
@@ -420,6 +423,28 @@
       <div id="monthly-reports"></div>
     </section>
 
+    <!-- ===== GALLERY ===== -->
+    <section class="page" id="page-gallery">
+      <div class="page-header">
+        <h1>🖼️ Gallery</h1>
+        <p class="page-sub">Apni memories aur motivation images save karo</p>
+      </div>
+      <div class="glass card" style="margin-bottom:20px;">
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+          <div style="flex:1;min-width:200px;">
+            <label style="font-size:0.78rem;font-weight:600;color:var(--text-muted);display:block;margin-bottom:6px;">Select Image</label>
+            <input type="file" id="gallery-upload" accept="image/*" class="glass-input" style="padding:8px;"/>
+          </div>
+          <div style="flex:2;min-width:200px;">
+            <label style="font-size:0.78rem;font-weight:600;color:var(--text-muted);display:block;margin-bottom:6px;">Caption (optional)</label>
+            <input class="glass-input" id="gallery-caption" placeholder="Add a caption..." type="text"/>
+          </div>
+          <button class="btn-primary" id="gallery-upload-btn" onclick="uploadGalleryImage()" style="white-space:nowrap;">📤 Upload</button>
+        </div>
+      </div>
+      <div id="gallery-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;"></div>
+    </section>
+
     <!-- ===== STRATEGY ===== -->
     <section class="page" id="page-strategy">
       <div class="page-header">
@@ -477,24 +502,45 @@
     <section class="page" id="page-motivation">
       <div class="page-header">
         <h1>💪 Motivation</h1>
-        <p class="page-sub">Keep the fire burning</p>
+        <p class="page-sub">Yaad rakh kyun shuru kiya tha</p>
       </div>
-      <div class="glass card motivation-card">
+
+      <!-- Quote card -->
+      <div class="glass card motivation-card" style="margin-bottom:20px;">
         <div class="quote-display" id="quote-display"></div>
-        <button class="btn-glass" onclick="newQuote()">🔄 New Quote</button>
+        <button class="btn-glass btn-sm" onclick="newQuote()">🔄 New Quote</button>
       </div>
-      <div class="glass card">
-        <h3>🖼️ Vision Board</h3>
-        <p style="opacity:0.7;margin-bottom:12px">Upload an image that motivates you</p>
-        <input type="file" id="vision-upload" accept="image/*" onchange="uploadVision()" style="display:none"/>
-        <button class="btn-glass" onclick="document.getElementById('vision-upload').click()">📷 Upload Image</button>
-        <div id="vision-display"></div>
-      </div>
-      <div class="glass card">
-        <h3>✍️ Personal Note</h3>
-        <textarea class="glass-input" id="personal-note" rows="3" placeholder="Write your personal motivation note..."></textarea>
-        <button class="btn-primary" style="margin-top:10px" onclick="savePersonalNote()">💾 Save</button>
-        <div id="personal-note-display" class="personal-note-display"></div>
+
+      <!-- Main layout: Note left, Image right -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
+
+        <!-- Left: Motivation note card -->
+        <div class="glass card" style="display:flex;flex-direction:column;gap:12px;">
+          <div style="font-size:1.1rem;font-weight:800;color:var(--accent);">❤️ Isse pana hai</div>
+          <div style="font-size:0.9rem;color:var(--text-muted);line-height:1.6;">
+            Agar abhi nahi padha, toh ise kho dega.<br/>
+            <span style="color:var(--accent);font-weight:600;">Chal chal chal — tu kar sakta hai yrrr!</span><br/>
+            Bas kuch din ki mehnat, phir Shreya teri ho jaayegi.<br/>
+            <span style="font-weight:700;color:var(--text);">Ek chance hai — karle yrrr bhai! 🔥</span>
+          </div>
+          <div style="border-top:1px solid var(--border);padding-top:12px;">
+            <label style="font-size:0.78rem;font-weight:600;color:var(--text-muted);display:block;margin-bottom:6px;">✍️ Apni baat likh</label>
+            <textarea class="glass-input" id="personal-note" rows="4" placeholder="Apne liye kuch likh yahan..."></textarea>
+            <button class="btn-primary btn-sm" style="margin-top:8px;" onclick="savePersonalNote()">💾 Save</button>
+            <div id="personal-note-display" class="personal-note-display"></div>
+          </div>
+        </div>
+
+        <!-- Right: Vision image -->
+        <div class="glass card" style="display:flex;flex-direction:column;gap:12px;">
+          <div style="font-size:1rem;font-weight:700;">🖼️ Vision Board</div>
+          <p style="font-size:0.82rem;color:var(--text-muted);">Uski photo lagao — roz dekho, roz yaad aayega kyun padh rahe ho</p>
+          <input type="file" id="vision-upload" accept="image/*" onchange="uploadVision()" style="display:none"/>
+          <button class="btn-glass btn-sm" onclick="document.getElementById('vision-upload').click()">📷 Upload Photo</button>
+          <div id="vision-display" style="border-radius:12px;overflow:hidden;flex:1;">
+            <div style="width:100%;height:200px;background:var(--bg-hover);border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:0.85rem;" id="vision-placeholder">No image yet</div>
+          </div>
+        </div>
       </div>
     </section>
 
