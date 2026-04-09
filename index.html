@@ -615,8 +615,12 @@
         </div>
         <div class="glass card">
           <h3>🗑️ Data Management</h3>
-          <p style="opacity:0.7;margin-bottom:12px">Clear all stored data (irreversible)</p>
-          <button class="btn-danger" onclick="clearAllData()">🗑️ Clear All Data</button>
+          <div class="setting-row">
+            <span>Your Sync ID (same on all devices)</span>
+          </div>
+          <input class="glass-input" id="setting-uid" placeholder="Your unique ID" style="margin-bottom:10px;" oninput="updateUID(this.value)"/>
+          <p style="font-size:0.75rem;color:var(--text-muted);margin-bottom:12px;">Same ID use karo sab devices pe — data sync hoga automatically</p>
+          <button class="btn-danger btn-sm" onclick="clearAllData()">🗑️ Clear All Data</button>
         </div>
       </div>
     </section>
