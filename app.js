@@ -1312,11 +1312,12 @@ async function searchMusic() {
   const query = document.getElementById('music-search').value.trim();
   if (!query) return;
   const resultsEl = document.getElementById('search-results');
-  if (resultsEl) resultsEl.innerHTML = '<div style="text-align:center;padding:10px;color:var(--text-muted)">🔍 Searching...</div>';
+  if (resultsEl) resultsEl.innerHTML = `
+    <div style="text-align:center;padding:24px;color:var(--text-muted);font-size:0.85rem;">
+      <div style="font-size:1.5rem;margin-bottom:8px;">🔍</div>Searching...
+    </div>`;
 
-  // YOUR VERCEL URL — update this after deploying
-  // YOUR VERCEL URL — update this after deploying
-  const API_BASE = window.YT_API || 'https://yt-api-theta.vercel.app';
+  const API_BASE = 'https://yt-api-theta.vercel.app';
 
   try {
     const res = await fetch(`${API_BASE}/api/search?q=${encodeURIComponent(query)}&limit=12`);
@@ -1326,23 +1327,32 @@ async function searchMusic() {
     playlist = songs;
 
     if (!resultsEl) return;
-    if (playlist.length === 0) {
-      resultsEl.innerHTML = '<div style="text-align:center;padding:10px;color:var(--text-muted)">No results found.</div>';
+    if (!playlist.length) {
+      resultsEl.innerHTML = `<div style="text-align:center;padding:24px;color:var(--text-muted);font-size:0.85rem;">No results found. Try another search.</div>`;
       return;
     }
+
     resultsEl.innerHTML = playlist.map((s, i) => `
-      <div class="search-result-item" onclick="playSong(${i})">
-        <img src="${s.thumbnail || 'https://placehold.co/36x36/667eea/fff?text=♪'}"
-             alt="" onerror="this.src='https://placehold.co/36x36/667eea/fff?text=♪'"/>
-        <div class="search-result-info">
-          <div class="search-result-name">${s.title}</div>
-          <div class="search-result-artist">${s.artist} • ${s.duration}</div>
+      <div id="result-${i}" onclick="playSong(${i})" style="
+        display:flex;align-items:center;gap:10px;padding:10px 12px;
+        border-radius:10px;cursor:pointer;transition:background 0.15s;
+        border-bottom:1px solid var(--border);
+      " onmouseover="this.style.background='var(--bg-hover)'" onmouseout="if(currentTrack!==${i})this.style.background='transparent'">
+        <img src="${s.thumbnail || 'https://placehold.co/44x44/6366f1/fff?text=♪'}"
+          onerror="this.src='https://placehold.co/44x44/6366f1/fff?text=♪'"
+          style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0;"/>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:0.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);">${s.title}</div>
+          <div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px;">${s.artist} · ${s.duration}</div>
         </div>
-        <span style="color:var(--accent);font-size:1.1rem">▶</span>
+        <span style="color:var(--accent);font-size:1rem;flex-shrink:0;">▶</span>
       </div>`).join('');
   } catch(e) {
     console.error('Music search error:', e);
-    if (resultsEl) resultsEl.innerHTML = `<div style="text-align:center;padding:10px;color:#ef4444">Search failed: ${e.message}</div>`;
+    if (resultsEl) resultsEl.innerHTML = `
+      <div style="text-align:center;padding:24px;color:var(--danger);font-size:0.85rem;">
+        ❌ Search failed: ${e.message}
+      </div>`;
   }
 }
 
@@ -1351,20 +1361,22 @@ async function playSong(index) {
   currentTrack = index;
   const song = playlist[index];
 
-  document.querySelectorAll('.search-result-item').forEach((el, i) => {
-    el.style.background = i === index ? 'rgba(102,126,234,0.25)' : '';
+  // Highlight selected row
+  document.querySelectorAll('[id^="result-"]').forEach((el, i) => {
+    el.style.background = i === index ? 'rgba(99,102,241,0.12)' : 'transparent';
   });
 
-  // Use YouTube iframe embed — works everywhere, no CORS, no backend needed
+  // Update song info
+  document.getElementById('player-title').textContent = song.title;
+  document.getElementById('player-artist').textContent = song.artist + ' · ' + song.duration;
+
+  // Load YouTube iframe
   const iframe = document.getElementById('yt-iframe');
   const wrap = document.getElementById('yt-player-wrap');
   if (iframe && wrap) {
     iframe.src = `https://www.youtube.com/embed/${song.id}?autoplay=1&rel=0&modestbranding=1`;
     wrap.style.display = 'block';
   }
-
-  document.getElementById('player-title').textContent = song.title;
-  document.getElementById('player-artist').textContent = song.artist || 'YouTube';
   isPlaying = true;
 }
 
