@@ -60,19 +60,20 @@ let saveCloudTimer = null;
 function saveState() {
   localStorage.setItem('cetTrackerState', JSON.stringify(state));
   saveToIndexedDB();
-  // Debounced cloud save — 3 seconds after last change
+  // Debounced cloud save — 2 seconds after last change
   clearTimeout(saveCloudTimer);
-  saveCloudTimer = setTimeout(saveToCloud, 3000);
+  saveCloudTimer = setTimeout(saveToCloud, 2000);
 }
 
 async function saveToCloud() {
   try {
-    await fetch(`${API_BASE}/api/user?uid=${getUID()}`, {
+    const res = await fetch(`${API_BASE}/api/user?uid=${getUID()}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(state)
     });
-  } catch(e) { /* silent fail — localStorage is backup */ }
+    if (!res.ok) console.warn('Cloud save failed:', res.status);
+  } catch(e) { /* silent — localStorage is backup */ }
 }
 
 async function loadFromCloud() {
@@ -1508,11 +1509,11 @@ async function renderGallery() {
       return;
     }
     el.innerHTML = items.map(item => `
-      <div class="gallery-item" style="position:relative;border-radius:12px;overflow:hidden;background:var(--bg-hover);aspect-ratio:1;">
+      <div style="position:relative;border-radius:12px;overflow:hidden;background:var(--bg-hover);aspect-ratio:1;">
         <img src="${item.url}" alt="${item.caption || ''}"
           style="width:100%;height:100%;object-fit:cover;display:block;"/>
-        ${item.caption ? `<div style="position:absolute;bottom:0;left:0;right:0;padding:8px 10px;background:linear-gradient(transparent,rgba(0,0,0,0.7));color:#fff;font-size:0.75rem;font-weight:500;">${item.caption}</div>` : ''}
-        <button onclick="deleteGalleryItem('${item._id}')" style="position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,0.5);border:none;color:#fff;font-size:0.8rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+        ${item.caption ? `<div style="position:absolute;bottom:0;left:0;right:0;padding:8px 10px;background:linear-gradient(transparent,rgba(0,0,0,0.75));color:#fff;font-size:0.75rem;font-weight:500;">${item.caption}</div>` : ''}
+        <button onclick="deleteGalleryItem('${item.itemId}')" style="position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,0.55);border:none;color:#fff;font-size:0.8rem;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">✕</button>
       </div>`).join('');
   } catch(e) {
     el.innerHTML = `<div style="text-align:center;padding:32px;color:var(--danger);">Failed to load: ${e.message}</div>`;
@@ -1521,48 +1522,64 @@ async function renderGallery() {
 
 async function uploadGalleryImage() {
   const fileInput = document.getElementById('gallery-upload');
-  const caption = document.getElementById('gallery-caption').value.trim();
-  const file = fileInput.files[0];
-  if (!file) return;
+  const captionInput = document.getElementById('gallery-caption');
+  const caption = captionInput?.value.trim() || '';
+  const file = fileInput?.files[0];
+  if (!file) { alert('Please select an image first'); return; }
 
   const btn = document.getElementById('gallery-upload-btn');
-  btn.textContent = 'Uploading...';
-  btn.disabled = true;
+  if (btn) { btn.textContent = 'Uploading...'; btn.disabled = true; }
 
   try {
     const reader = new FileReader();
+    reader.onerror = () => { throw new Error('File read failed'); };
     reader.onload = async (e) => {
-      const base64 = e.target.result.split(',')[1];
-      const mimeType = file.type;
-      const res = await fetch(`${API_BASE}/api/gallery?uid=${getUID()}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: base64, caption, mimeType })
-      });
-      const data = await res.json();
-      if (data.success) {
-        fileInput.value = '';
-        document.getElementById('gallery-caption').value = '';
-        showAchievementPopup('📸 Image Saved!', 'Gallery mein add ho gaya', '🖼️');
-        renderGallery();
+      try {
+        const base64 = e.target.result.split(',')[1];
+        const mimeType = file.type;
+        console.log('Uploading to:', `${API_BASE}/api/gallery?uid=${getUID()}`);
+        const res = await fetch(`${API_BASE}/api/gallery?uid=${getUID()}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageBase64: base64, caption, mimeType })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Upload failed');
+        }
+        const data = await res.json();
+        console.log('Upload response:', data);
+        if (data.success) {
+          fileInput.value = '';
+          if (captionInput) captionInput.value = '';
+          showAchievementPopup('📸 Image Saved!', 'Gallery mein add ho gaya', '🖼️');
+          await renderGallery();
+        } else {
+          throw new Error(data.error || 'Upload failed');
+        }
+      } catch(err) {
+        console.error('Upload error:', err);
+        alert('Upload failed: ' + err.message);
+      } finally {
+        if (btn) { btn.textContent = '📤 Upload'; btn.disabled = false; }
       }
-      btn.textContent = '📤 Upload';
-      btn.disabled = false;
     };
     reader.readAsDataURL(file);
   } catch(e) {
-    btn.textContent = '📤 Upload';
-    btn.disabled = false;
-    alert('Upload failed: ' + e.message);
+    console.error('File read error:', e);
+    alert('File read failed: ' + e.message);
+    if (btn) { btn.textContent = '📤 Upload'; btn.disabled = false; }
   }
 }
 
-async function deleteGalleryItem(id) {
+async function deleteGalleryItem(itemId) {
   if (!confirm('Delete this image?')) return;
   try {
-    await fetch(`${API_BASE}/api/gallery?uid=${getUID()}&id=${id}`, { method: 'DELETE' });
-    renderGallery();
-  } catch(e) { alert('Delete failed'); }
+    const res = await fetch(`${API_BASE}/api/gallery?uid=${getUID()}&itemId=${itemId}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.success) renderGallery();
+    else alert('Delete failed: ' + data.error);
+  } catch(e) { alert('Delete failed: ' + e.message); }
 }
 
 // ===== INIT =====
