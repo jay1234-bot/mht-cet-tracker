@@ -195,9 +195,11 @@
     <section class="page" id="page-focus">
       <div class="page-header">
         <h1>🎯 Focus Mode</h1>
-        <p class="page-sub">Distraction-free deep work</p>
+        <p class="page-sub">Distraction-free deep work + music</p>
       </div>
+
       <div class="focus-layout">
+        <!-- Timer Card -->
         <div class="glass card focus-timer-card">
           <div class="focus-timer" id="focus-timer">00:00:00</div>
           <div class="focus-subject" id="focus-subject-label">Select a subject to begin</div>
@@ -205,35 +207,51 @@
             <button class="btn-primary" onclick="toggleFocusFullscreen()">⛶ Fullscreen</button>
           </div>
         </div>
-        <!-- Music Player -->
-        <div class="glass card music-player">
-          <div class="player-header">🎵 YouTube Music</div>
-          <div class="player-search" style="margin-bottom:8px;">
-            <input class="glass-input" id="music-search" placeholder="🔍 Search any song..." type="text"/>
-            <button class="btn-primary btn-sm" onclick="searchMusic()">Search</button>
+
+        <!-- Music Player Card -->
+        <div class="glass card" style="padding:0;overflow:hidden;display:flex;flex-direction:column;">
+
+          <!-- Header -->
+          <div style="padding:16px 20px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
+            <span style="font-size:1.1rem;">🎵</span>
+            <span style="font-weight:700;font-size:0.95rem;">YouTube Music</span>
           </div>
-          <!-- YouTube iframe player -->
-          <div id="yt-player-wrap" style="display:none;border-radius:12px;overflow:hidden;background:#000;">
-            <iframe id="yt-iframe"
-              width="100%" height="200"
-              frameborder="0"
-              allow="autoplay; encrypted-media"
-              allowfullscreen
-              style="display:block;border-radius:12px;">
-            </iframe>
+
+          <!-- Now Playing -->
+          <div id="yt-player-wrap" style="display:none;background:#000;width:100%;">
+            <iframe id="yt-iframe" width="100%" height="200" frameborder="0"
+              allow="autoplay; encrypted-media; picture-in-picture"
+              allowfullscreen style="display:block;"></iframe>
           </div>
-          <div class="player-info" style="margin-top:8px;">
-            <div class="player-title" id="player-title">Search a song to play</div>
-            <div class="player-artist" id="player-artist">—</div>
+
+          <!-- Song Info -->
+          <div style="padding:12px 20px 8px;border-bottom:1px solid var(--border);">
+            <div id="player-title" style="font-weight:600;font-size:0.875rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Search a song to play</div>
+            <div id="player-artist" style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">—</div>
           </div>
-          <div class="search-results" id="search-results"></div>
+
+          <!-- Search Bar -->
+          <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;gap:8px;">
+            <input class="glass-input" id="music-search" placeholder="Search songs, artists..." type="text"
+              style="flex:1;border-radius:999px;padding:8px 16px;font-size:0.85rem;"/>
+            <button class="btn-primary btn-sm" onclick="searchMusic()" style="border-radius:999px;padding:8px 18px;white-space:nowrap;">Search</button>
+          </div>
+
+          <!-- Search Results -->
+          <div id="search-results" style="flex:1;overflow-y:auto;max-height:280px;padding:8px 8px;">
+            <div style="text-align:center;padding:32px 16px;color:var(--text-muted);font-size:0.85rem;">
+              🎵 Search for a song to get started
+            </div>
+          </div>
+
         </div>
       </div>
+
       <!-- Fullscreen overlay -->
       <div class="fullscreen-overlay" id="fullscreen-overlay">
         <div class="fs-timer" id="fs-timer">00:00:00</div>
         <div class="fs-label">Deep Focus Mode</div>
-        <button class="btn-glass" onclick="exitFullscreen()">✕ Exit</button>
+        <button class="btn-glass" onclick="exitFullscreen()" style="margin-top:8px;">✕ Exit</button>
       </div>
     </section>
 
