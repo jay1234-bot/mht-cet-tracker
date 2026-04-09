@@ -14,22 +14,170 @@ let state = {
   missionsDate: '', missions: []
 };
 
+// ===== PERSISTENT SAVE — localStorage + IndexedDB =====
+const DB_NAME = 'CETTrackerDB';
+let db = null;
+
+function initIndexedDB() {
+  return new Promise((resolve) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('state')) d.createObjectStore('state', { keyPath: 'id' });
+    };
+    req.onsuccess = e => { db = e.target.result; resolve(); };
+    req.onerror = () => resolve();
+  });
+}
+
+function saveToIndexedDB() {
+  if (!db) return;
+  try {
+    const tx = db.transaction('state', 'readwrite');
+    tx.objectStore('state').put({ id: 'main', data: JSON.stringify(state), savedAt: Date.now() });
+  } catch(e) {}
+}
+
 function loadState() {
   const saved = localStorage.getItem('cetTrackerState');
   if (saved) {
     try { state = { ...state, ...JSON.parse(saved) }; } catch(e) {}
   }
 }
+
 function saveState() {
   localStorage.setItem('cetTrackerState', JSON.stringify(state));
+  saveToIndexedDB();
 }
 
-// ===== LEVELS =====
+// ===== ACHIEVEMENT POPUP =====
+function showAchievementPopup(title, desc, icon = '🏆') {
+  const existing = document.getElementById('ach-popup');
+  if (existing) existing.remove();
+  const popup = document.createElement('div');
+  popup.id = 'ach-popup';
+  popup.innerHTML = `<span style="font-size:2rem">${icon}</span><div><div style="font-weight:800;font-size:0.95rem">${title}</div><div style="font-size:0.8rem;opacity:0.85;margin-top:2px">${desc}</div></div>`;
+  Object.assign(popup.style, {
+    position:'fixed', bottom:'24px', right:'24px', zIndex:'9999',
+    background:'linear-gradient(135deg,rgba(102,126,234,0.97),rgba(118,75,162,0.97))',
+    backdropFilter:'blur(20px)', color:'#fff', borderRadius:'16px',
+    padding:'16px 20px', display:'flex', alignItems:'center', gap:'14px',
+    boxShadow:'0 8px 32px rgba(102,126,234,0.5)', maxWidth:'320px',
+    border:'1px solid rgba(255,255,255,0.2)',
+    transform:'translateX(120%)', transition:'transform 0.4s cubic-bezier(0.34,1.56,0.64,1)'
+  });
+  document.body.appendChild(popup);
+  setTimeout(() => popup.style.transform = 'translateX(0)', 50);
+  setTimeout(() => { popup.style.transform = 'translateX(120%)'; setTimeout(() => popup.remove(), 400); }, 4000);
+}
+
+// ===== MONTHLY REPORT =====
+function generateMonthlyReport(year, month) {
+  const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+  const sessions = state.sessions.filter(s => s.date?.startsWith(monthKey));
+  const totalSecs = sessions.reduce((a, s) => a + (s.duration || 0), 0);
+  const activeDays = new Set(sessions.map(s => s.date)).size;
+  const subjectMap = {};
+  sessions.forEach(s => { subjectMap[s.subject] = (subjectMap[s.subject] || 0) + s.duration / 3600; });
+  const sorted = Object.entries(subjectMap).sort((a, b) => b[1] - a[1]);
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return {
+    month: monthNames[month], year, monthKey,
+    totalHours: (totalSecs / 3600).toFixed(1),
+    activeDays, sessions: sessions.length,
+    subjects: subjectMap,
+    bestSubject: sorted[0]?.[0] || '—',
+    weakSubject: sorted[sorted.length - 1]?.[0] || '—',
+    avgHoursPerDay: activeDays > 0 ? (totalSecs / 3600 / activeDays).toFixed(1) : 0
+  };
+}
+
+function renderMonthlyReports() {
+  const el = document.getElementById('monthly-reports');
+  if (!el) return;
+  const now = new Date();
+  const reports = [];
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    reports.push(generateMonthlyReport(d.getFullYear(), d.getMonth()));
+  }
+  el.innerHTML = reports.map(r => {
+    const maxHrs = Math.max(...Object.values(r.subjects), 0.1);
+    return `<div class="report-card glass card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <span style="font-weight:800;font-size:1rem">${r.month} ${r.year}</span>
+        <span style="font-size:1.4rem;font-weight:900;color:var(--accent)">${r.totalHours}h</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">
+        <div style="text-align:center;padding:8px;background:rgba(102,126,234,0.1);border-radius:10px"><div style="font-weight:800;font-size:1.1rem;color:var(--accent)">${r.activeDays}</div><div style="font-size:0.72rem;color:var(--text-muted)">Active Days</div></div>
+        <div style="text-align:center;padding:8px;background:rgba(102,126,234,0.1);border-radius:10px"><div style="font-weight:800;font-size:1.1rem;color:var(--accent)">${r.sessions}</div><div style="font-size:0.72rem;color:var(--text-muted)">Sessions</div></div>
+        <div style="text-align:center;padding:8px;background:rgba(102,126,234,0.1);border-radius:10px"><div style="font-weight:800;font-size:1.1rem;color:var(--accent)">${r.avgHoursPerDay}h</div><div style="font-size:0.72rem;color:var(--text-muted)">Daily Avg</div></div>
+      </div>
+      ${Object.entries(r.subjects).map(([sub, hrs]) => `
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:0.82rem">
+          <span style="width:80px;flex-shrink:0">${sub}</span>
+          <div style="flex:1;height:6px;background:rgba(102,126,234,0.15);border-radius:99px;overflow:hidden">
+            <div style="height:100%;width:${Math.round((hrs/maxHrs)*100)}%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:99px"></div>
+          </div>
+          <span style="width:36px;text-align:right;font-weight:700">${hrs.toFixed(1)}h</span>
+        </div>`).join('')}
+      ${r.weakSubject !== '—' ? `<div style="margin-top:8px;padding:8px 12px;background:rgba(239,68,68,0.1);border-radius:10px;font-size:0.8rem;color:#ef4444">⚠️ Weak: <strong>${r.weakSubject}</strong> — isko aur time do!</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ===== LEVELS — 50 levels, June 2027 tak khatam nahi hoga =====
 const LEVELS = [
-  { name: 'Beginner', min: 0, max: 500 },
-  { name: 'Grinder', min: 500, max: 2000 },
-  { name: 'Topper', min: 2000, max: 5000 },
-  { name: 'CET Slayer', min: 5000, max: Infinity }
+  { name: 'Naya Shuruat', min: 0 },
+  { name: 'Curious Learner', min: 200 },
+  { name: 'Padhai Starter', min: 500 },
+  { name: 'Focus Seeker', min: 900 },
+  { name: 'Consistent One', min: 1400 },
+  { name: 'Rising Star', min: 2000 },
+  { name: 'Grinder', min: 2700 },
+  { name: 'Daily Warrior', min: 3500 },
+  { name: 'Knowledge Hunter', min: 4400 },
+  { name: 'Study Machine', min: 5400 },
+  { name: 'Formula Master', min: 6500 },
+  { name: 'Concept King', min: 7700 },
+  { name: 'PYQ Crusher', min: 9000 },
+  { name: 'Mock Test Hero', min: 10400 },
+  { name: 'Physics Warrior', min: 11900 },
+  { name: 'Chem Wizard', min: 13500 },
+  { name: 'Math Ninja', min: 15200 },
+  { name: 'Bio Expert', min: 17000 },
+  { name: 'Topper Candidate', min: 18900 },
+  { name: 'Rank Chaser', min: 20900 },
+  { name: 'Elite Grinder', min: 23000 },
+  { name: 'Unstoppable', min: 25200 },
+  { name: 'CET Aspirant', min: 27500 },
+  { name: 'Score Hunter', min: 29900 },
+  { name: 'Percentile Seeker', min: 32400 },
+  { name: 'Top 10% Target', min: 35000 },
+  { name: 'Revision King', min: 37700 },
+  { name: 'Speed Solver', min: 40500 },
+  { name: 'Accuracy Master', min: 43400 },
+  { name: 'Time Manager', min: 46400 },
+  { name: 'Exam Ready', min: 49500 },
+  { name: 'Beast Mode', min: 52700 },
+  { name: 'Topper', min: 56000 },
+  { name: 'Legend', min: 59400 },
+  { name: 'CET Dominator', min: 62900 },
+  { name: 'Rank 1 Mindset', min: 66500 },
+  { name: 'Diamond Grinder', min: 70200 },
+  { name: 'Platinum Scholar', min: 74000 },
+  { name: 'Gold Medallist', min: 77900 },
+  { name: 'Hall of Fame', min: 81900 },
+  { name: 'Mythic Learner', min: 86000 },
+  { name: 'Legendary Topper', min: 90200 },
+  { name: 'CET Slayer', min: 94500 },
+  { name: 'Supreme Scholar', min: 98900 },
+  { name: 'Invincible', min: 103400 },
+  { name: 'God Mode', min: 108000 },
+  { name: 'Immortal Grinder', min: 112700 },
+  { name: 'CET Champion', min: 117500 },
+  { name: 'Ultimate Topper', min: 122400 },
+  { name: '95%ile Achieved 🏆', min: 127400 },
 ];
 function getLevel(xp) {
   for (let i = LEVELS.length - 1; i >= 0; i--) {
@@ -38,10 +186,16 @@ function getLevel(xp) {
   return 0;
 }
 function getLevelProgress(xp) {
-  const lvl = getLevel(xp);
-  const l = LEVELS[lvl];
-  if (l.max === Infinity) return 100;
-  return Math.min(100, ((xp - l.min) / (l.max - l.min)) * 100);
+  const idx = getLevel(xp);
+  if (idx >= LEVELS.length - 1) return 100;
+  const cur = LEVELS[idx].min;
+  const next = LEVELS[idx + 1].min;
+  return Math.min(100, ((xp - cur) / (next - cur)) * 100);
+}
+function getNextLevelXP(xp) {
+  const idx = getLevel(xp);
+  if (idx >= LEVELS.length - 1) return 0;
+  return LEVELS[idx + 1].min - xp;
 }
 
 // ===== BADGES =====
@@ -49,11 +203,25 @@ const BADGES = [
   { id: 'first_session', icon: '🎯', name: 'First Step', desc: 'Complete first session', check: s => s.sessions.length >= 1 },
   { id: 'streak3', icon: '🔥', name: 'On Fire', desc: '3-day streak', check: s => s.streak >= 3 },
   { id: 'streak7', icon: '⚡', name: 'Week Warrior', desc: '7-day streak', check: s => s.streak >= 7 },
+  { id: 'streak14', icon: '💪', name: 'Fortnight Fighter', desc: '14-day streak', check: s => s.streak >= 14 },
+  { id: 'streak30', icon: '🏅', name: 'Monthly Legend', desc: '30-day streak', check: s => s.streak >= 30 },
+  { id: 'streak60', icon: '👑', name: 'Unstoppable', desc: '60-day streak', check: s => s.streak >= 60 },
+  { id: 'streak100', icon: '🌟', name: 'Century Grinder', desc: '100-day streak', check: s => s.streak >= 100 },
   { id: 'xp500', icon: '⭐', name: 'XP Hunter', desc: 'Earn 500 XP', check: s => s.xp >= 500 },
-  { id: 'xp2000', icon: '💎', name: 'Diamond Grind', desc: 'Earn 2000 XP', check: s => s.xp >= 2000 },
+  { id: 'xp2000', icon: '💎', name: 'Diamond Grind', desc: 'Earn 2,000 XP', check: s => s.xp >= 2000 },
+  { id: 'xp10000', icon: '🔮', name: 'XP Master', desc: 'Earn 10,000 XP', check: s => s.xp >= 10000 },
+  { id: 'xp50000', icon: '🌈', name: 'XP God', desc: 'Earn 50,000 XP', check: s => s.xp >= 50000 },
   { id: 'sessions10', icon: '📚', name: 'Bookworm', desc: '10 sessions done', check: s => s.sessions.length >= 10 },
-  { id: 'hours10', icon: '⏰', name: 'Time Lord', desc: '10 hours total', check: s => getTotalHours() >= 10 },
-  { id: 'hours50', icon: '🏆', name: 'Champion', desc: '50 hours total', check: s => getTotalHours() >= 50 },
+  { id: 'sessions50', icon: '📖', name: 'Scholar', desc: '50 sessions done', check: s => s.sessions.length >= 50 },
+  { id: 'sessions100', icon: '🎓', name: 'Graduate', desc: '100 sessions done', check: s => s.sessions.length >= 100 },
+  { id: 'hours10', icon: '⏰', name: 'Time Lord', desc: '10 hours total', check: () => getTotalHours() >= 10 },
+  { id: 'hours50', icon: '🏆', name: 'Champion', desc: '50 hours total', check: () => getTotalHours() >= 50 },
+  { id: 'hours100', icon: '💯', name: 'Century Club', desc: '100 hours total', check: () => getTotalHours() >= 100 },
+  { id: 'hours500', icon: '🚀', name: 'Rocket Scholar', desc: '500 hours total', check: () => getTotalHours() >= 500 },
+  { id: 'all_subjects', icon: '🌍', name: 'All Rounder', desc: 'Study all 4 subjects', check: s => new Set(s.sessions.map(x => x.subject)).size >= 4 },
+  { id: 'level10', icon: '🎮', name: 'Level 10', desc: 'Reach Level 10', check: s => getLevel(s.xp) >= 9 },
+  { id: 'level25', icon: '🎯', name: 'Level 25', desc: 'Reach Level 25', check: s => getLevel(s.xp) >= 24 },
+  { id: 'level50', icon: '🏆', name: 'Max Level!', desc: 'Reach Level 50', check: s => getLevel(s.xp) >= 49 },
 ];
 function getTotalHours() {
   return state.sessions.reduce((a, s) => a + (s.duration || 0), 0) / 3600;
@@ -147,6 +315,8 @@ function showPage(name) {
   if (name === 'tasks') { renderTasks(); renderMistakes(); }
   if (name === 'session') renderSessionHistory();
   if (name === 'settings') loadSettings();
+  if (name === 'reports') renderMonthlyReports();
+  if (name === 'dashboard') { initDashboard(); }
 }
 
 function toggleSidebar() {
@@ -174,30 +344,69 @@ function updateXPUI() {
   const lvlIdx = getLevel(state.xp);
   const lvl = LEVELS[lvlIdx];
   const pct = getLevelProgress(state.xp);
+  const toNext = getNextLevelXP(state.xp);
+
   const fill = document.getElementById('sb-xp-fill');
   const lvlEl = document.getElementById('sb-level');
   const xpEl = document.getElementById('sb-xp');
   if (fill) fill.style.width = pct + '%';
-  if (lvlEl) lvlEl.textContent = lvl.name;
-  if (xpEl) xpEl.textContent = state.xp + ' XP';
+  if (lvlEl) lvlEl.textContent = `Lv.${lvlIdx + 1} ${lvl.name}`;
+  if (xpEl) xpEl.textContent = state.xp.toLocaleString() + ' XP';
+
   const dashXp = document.getElementById('dash-xp');
-  if (dashXp) dashXp.textContent = state.xp;
+  if (dashXp) dashXp.textContent = state.xp.toLocaleString();
+
+  // Update dash level card if exists
+  const dashLvl = document.getElementById('dash-level-name');
+  if (dashLvl) dashLvl.textContent = `Lv.${lvlIdx + 1} — ${lvl.name}`;
+  const dashNext = document.getElementById('dash-xp-next');
+  if (dashNext) dashNext.textContent = toNext > 0 ? `${toNext.toLocaleString()} XP to next level` : '🏆 Max Level!';
+  const dashPct = document.getElementById('dash-xp-fill');
+  if (dashPct) dashPct.style.width = pct + '%';
 }
 
-// ===== STREAK =====
+// ===== STREAK — Grace period system =====
 function updateStreak() {
   const today = todayStr();
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
   if (state.lastStudyDate === today) return;
+
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  const twoDaysAgo = new Date(Date.now() - 172800000).toISOString().split('T')[0];
+  let streak = state.streak || 0;
+
   if (state.lastStudyDate === yesterday) {
-    state.streak++;
-  } else if (state.lastStudyDate !== today) {
-    state.streak = 1;
+    streak++;
+    state.streakFreezeUsed = false;
+  } else if (state.lastStudyDate === twoDaysAgo && !state.streakFreezeUsed) {
+    streak++;
+    state.streakFreezeUsed = true;
+    showAchievementPopup('🧊 Streak Freeze Used!', 'Ek din miss hua but streak bachi!', '🧊');
+  } else if (!state.lastStudyDate) {
+    streak = 1;
+  } else {
+    if (streak >= 3) showAchievementPopup('💔 Streak Broken', `${streak} din ki streak toot gayi. Naya shuru kar!`, '😤');
+    streak = 1;
+    state.streakFreezeUsed = false;
   }
+
+  if (streak > (state.longestStreak || 0)) state.longestStreak = streak;
+  state.streak = streak;
   state.lastStudyDate = today;
   saveState();
   const el = document.getElementById('dash-streak');
-  if (el) el.textContent = state.streak;
+  if (el) el.textContent = streak;
+}
+
+function checkStreakOnLoad() {
+  if (!state.lastStudyDate) return;
+  const twoDaysAgo = new Date(Date.now() - 172800000).toISOString().split('T')[0];
+  if (state.lastStudyDate < twoDaysAgo && !state.streakFreezeUsed) {
+    if (state.streak > 0) {
+      state.streak = 0;
+      state.streakFreezeUsed = false;
+      saveState();
+    }
+  }
 }
 
 // ===== DASHBOARD INIT =====
@@ -254,9 +463,17 @@ function toggleMission(id) {
 function renderBadges() {
   const el = document.getElementById('badges-grid');
   if (!el) return;
+  const earned = state.earnedBadges || [];
   el.innerHTML = BADGES.map(b => {
-    const earned = b.check(state);
-    return `<div class="badge ${earned ? 'earned' : ''}" title="${b.desc}">
+    const isEarned = b.check(state);
+    // Show popup for newly earned badges
+    if (isEarned && !earned.includes(b.id)) {
+      earned.push(b.id);
+      state.earnedBadges = earned;
+      setTimeout(() => showAchievementPopup(`${b.icon} ${b.name}`, b.desc, b.icon), 500);
+      saveState();
+    }
+    return `<div class="badge ${isEarned ? 'earned' : ''}" title="${b.desc}">
       ${b.icon} ${b.name}
     </div>`;
   }).join('');
@@ -1173,8 +1390,10 @@ function fmtAudioTime(secs) {
 }
 
 // ===== INIT =====
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+  await initIndexedDB();
   loadState();
+  checkStreakOnLoad();
 
   // Apply saved settings
   if (state.settings.dark) document.body.classList.add('dark');
