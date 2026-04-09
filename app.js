@@ -320,7 +320,10 @@ function showPage(name) {
 }
 
 function toggleSidebar() {
-  document.getElementById('sidebar').classList.toggle('open');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  sidebar.classList.toggle('open');
+  if (overlay) overlay.classList.toggle('active');
 }
 
 // ===== DARK MODE =====
@@ -466,15 +469,15 @@ function renderBadges() {
   const earned = state.earnedBadges || [];
   el.innerHTML = BADGES.map(b => {
     const isEarned = b.check(state);
-    // Show popup for newly earned badges
     if (isEarned && !earned.includes(b.id)) {
       earned.push(b.id);
       state.earnedBadges = earned;
-      setTimeout(() => showAchievementPopup(`${b.icon} ${b.name}`, b.desc, b.icon), 500);
+      setTimeout(() => showAchievementPopup(`${b.name}`, b.desc, b.icon), 500);
       saveState();
     }
-    return `<div class="badge ${isEarned ? 'earned' : ''}" title="${b.desc}">
-      ${b.icon} ${b.name}
+    return `<div class="badge-item ${isEarned ? 'earned' : ''}" title="${b.desc}">
+      <div class="badge-icon">${b.icon}</div>
+      <div class="badge-name">${b.name}</div>
     </div>`;
   }).join('');
 }
@@ -605,14 +608,15 @@ function renderSessionHistory() {
     return;
   }
   el.innerHTML = state.sessions.slice(0, 20).map(s => `
-    <div class="history-item">
-      <div>
-        <div class="history-subject">${s.subject}</div>
-        <div class="history-meta">${s.topic || 'General'} • ${fmtTime(s.duration)}</div>
+    <div class="session-history-item">
+      <span class="session-subject-tag">${s.subject}</span>
+      <div class="session-info">
+        <div class="session-topic-text">${s.topic || 'General'}</div>
+        <div class="session-meta">${s.date} ${s.time || ''}</div>
       </div>
       <div style="text-align:right">
-        <div style="color:#f5a623;font-weight:700">+${s.xp} XP</div>
-        <div class="history-meta">${s.date} ${s.time || ''}</div>
+        <div class="session-duration">${fmtTime(s.duration)}</div>
+        <div style="font-size:0.75rem;color:var(--amber);font-weight:700">+${s.xp} XP</div>
       </div>
     </div>
   `).join('');
@@ -880,10 +884,10 @@ function renderTasks() {
   }
   el.innerHTML = state.tasks.map(t => `
     <div class="task-item ${t.done ? 'done' : ''}">
-      <div class="task-check ${t.done ? 'checked' : ''}" onclick="toggleTask(${t.id})">${t.done ? '✓' : ''}</div>
+      <div class="task-checkbox ${t.done ? 'done' : ''}" onclick="toggleTask(${t.id})">${t.done ? '✓' : ''}</div>
       <span class="task-text">${t.text}</span>
-      <span class="task-priority ${t.priority}">${t.priority === 'high' ? '🔴' : t.priority === 'medium' ? '🟡' : '🟢'} ${t.priority}</span>
-      <button class="task-del" onclick="deleteTask(${t.id})">🗑</button>
+      <span class="priority-tag ${t.priority}">${t.priority}</span>
+      <button class="task-delete" onclick="deleteTask(${t.id})">✕</button>
     </div>
   `).join('');
 }
@@ -916,11 +920,11 @@ function renderMistakes() {
   el.innerHTML = state.mistakes.map(m => `
     <div class="mistake-item">
       <div style="flex:1">
-        <div style="font-weight:600;margin-bottom:2px">${m.text}</div>
-        <div style="font-size:0.75rem;color:var(--text-muted)">${m.date}</div>
+        <div class="mistake-text">${m.text}</div>
+        <div class="mistake-date">${m.date}</div>
       </div>
-      <span class="mistake-subject">${m.subject}</span>
-      <button class="task-del" onclick="deleteMistake(${m.id})" style="margin-left:8px">🗑</button>
+      <span class="mistake-subject-tag">${m.subject}</span>
+      <button class="task-delete" onclick="deleteMistake(${m.id})" style="margin-left:8px">✕</button>
     </div>
   `).join('');
 }
@@ -957,10 +961,13 @@ function renderGoals() {
   }
   el.innerHTML = state.goals.map(g => `
     <div class="goal-item ${g.done ? 'done' : ''}">
-      <div class="task-check ${g.done ? 'checked' : ''}" onclick="toggleGoal(${g.id})">${g.done ? '✓' : ''}</div>
-      <span class="goal-text" style="${g.done ? 'text-decoration:line-through;opacity:0.5' : ''}">${g.text}</span>
-      ${g.target ? `<span class="goal-target">🎯 ${g.target}</span>` : ''}
-      <button class="goal-del" onclick="deleteGoal(${g.id})">🗑</button>
+      <div class="goal-icon">🎯</div>
+      <div class="goal-info">
+        <div class="goal-text" style="${g.done ? 'text-decoration:line-through;opacity:0.5' : ''}">${g.text}</div>
+        ${g.target ? `<div class="goal-target">Target: ${g.target}</div>` : ''}
+      </div>
+      <div class="task-checkbox ${g.done ? 'done' : ''}" onclick="toggleGoal(${g.id})" style="cursor:pointer">${g.done ? '✓' : ''}</div>
+      <button class="task-delete" onclick="deleteGoal(${g.id})">✕</button>
     </div>
   `).join('');
 }
