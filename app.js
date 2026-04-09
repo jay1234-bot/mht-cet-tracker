@@ -14,7 +14,18 @@ let state = {
   missionsDate: '', missions: []
 };
 
-// ===== PERSISTENT SAVE — localStorage + IndexedDB =====
+// ===== CONFIG =====
+const API_BASE = 'https://yt-api-theta.vercel.app';
+// Simple UID — stored in localStorage, same across sessions on same browser
+// For cross-device sync, user sets their own UID in settings
+function getUID() {
+  let uid = localStorage.getItem('cet_uid');
+  if (!uid) {
+    uid = 'user_' + Math.random().toString(36).slice(2, 10);
+    localStorage.setItem('cet_uid', uid);
+  }
+  return uid;
+}
 const DB_NAME = 'CETTrackerDB';
 let db = null;
 
@@ -45,9 +56,40 @@ function loadState() {
   }
 }
 
+let saveCloudTimer = null;
 function saveState() {
   localStorage.setItem('cetTrackerState', JSON.stringify(state));
   saveToIndexedDB();
+  // Debounced cloud save — 3 seconds after last change
+  clearTimeout(saveCloudTimer);
+  saveCloudTimer = setTimeout(saveToCloud, 3000);
+}
+
+async function saveToCloud() {
+  try {
+    await fetch(`${API_BASE}/api/user?uid=${getUID()}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(state)
+    });
+  } catch(e) { /* silent fail — localStorage is backup */ }
+}
+
+async function loadFromCloud() {
+  try {
+    const res = await fetch(`${API_BASE}/api/user?uid=${getUID()}`);
+    const json = await res.json();
+    if (json.success && json.data) {
+      // Merge cloud data — cloud wins for XP/streak, keep local sessions if more
+      const cloud = json.data;
+      if ((cloud.xp || 0) >= (state.xp || 0)) {
+        state = { ...state, ...cloud };
+        localStorage.setItem('cetTrackerState', JSON.stringify(state));
+      }
+      return true;
+    }
+  } catch(e) {}
+  return false;
 }
 
 // ===== ACHIEVEMENT POPUP =====
@@ -316,6 +358,7 @@ function showPage(name) {
   if (name === 'session') renderSessionHistory();
   if (name === 'settings') loadSettings();
   if (name === 'reports') renderMonthlyReports();
+  if (name === 'gallery') renderGallery();
   if (name === 'dashboard') { initDashboard(); }
 }
 
@@ -781,9 +824,18 @@ function renderCalendar() {
     else if (hrs > 0) cls += ' studied';
     else if (isPast) cls += ' missed';
     else cls += ' future';
-    html += `<div class="${cls}">
-      <span>${d}</span>
-      ${hrs > 0 ? `<span class="cal-day-hrs">${hrs.toFixed(1)}h</span>` : ''}
+
+    // Format hours nicely: show Xh Ym or just day number
+    let hrsLabel = '';
+    if (hrs > 0) {
+      const h = Math.floor(hrs);
+      const m = Math.round((hrs - h) * 60);
+      hrsLabel = h > 0 ? `${h}h${m > 0 ? m + 'm' : ''}` : `${m}m`;
+    }
+
+    html += `<div class="${cls}" title="${dateStr}${hrs > 0 ? ' — ' + hrsLabel + ' studied' : ''}">
+      <span class="cal-day-num">${d}</span>
+      ${hrsLabel ? `<span class="cal-day-hrs">${hrsLabel}</span>` : ''}
     </div>`;
   }
   grid.innerHTML = html;
@@ -1408,11 +1460,94 @@ function fmtAudioTime(secs) {
   return `${m}:${pad(s)}`;
 }
 
+// ===== GALLERY =====
+async function renderGallery() {
+  const el = document.getElementById('gallery-grid');
+  if (!el) return;
+  el.innerHTML = `<div style="text-align:center;padding:32px;color:var(--text-muted)">Loading...</div>`;
+  try {
+    const res = await fetch(`${API_BASE}/api/gallery?uid=${getUID()}`);
+    const data = await res.json();
+    const items = data.items || [];
+    if (!items.length) {
+      el.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-muted);">
+        <div style="font-size:2.5rem;margin-bottom:8px;">🖼️</div>
+        <div style="font-weight:600;">No images yet</div>
+        <div style="font-size:0.8rem;margin-top:4px;">Upload your first image above</div>
+      </div>`;
+      return;
+    }
+    el.innerHTML = items.map(item => `
+      <div class="gallery-item" style="position:relative;border-radius:12px;overflow:hidden;background:var(--bg-hover);aspect-ratio:1;">
+        <img src="${item.url}" alt="${item.caption || ''}"
+          style="width:100%;height:100%;object-fit:cover;display:block;"/>
+        ${item.caption ? `<div style="position:absolute;bottom:0;left:0;right:0;padding:8px 10px;background:linear-gradient(transparent,rgba(0,0,0,0.7));color:#fff;font-size:0.75rem;font-weight:500;">${item.caption}</div>` : ''}
+        <button onclick="deleteGalleryItem('${item._id}')" style="position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,0.5);border:none;color:#fff;font-size:0.8rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>`).join('');
+  } catch(e) {
+    el.innerHTML = `<div style="text-align:center;padding:32px;color:var(--danger);">Failed to load: ${e.message}</div>`;
+  }
+}
+
+async function uploadGalleryImage() {
+  const fileInput = document.getElementById('gallery-upload');
+  const caption = document.getElementById('gallery-caption').value.trim();
+  const file = fileInput.files[0];
+  if (!file) return;
+
+  const btn = document.getElementById('gallery-upload-btn');
+  btn.textContent = 'Uploading...';
+  btn.disabled = true;
+
+  try {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const base64 = e.target.result.split(',')[1];
+      const mimeType = file.type;
+      const res = await fetch(`${API_BASE}/api/gallery?uid=${getUID()}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: base64, caption, mimeType })
+      });
+      const data = await res.json();
+      if (data.success) {
+        fileInput.value = '';
+        document.getElementById('gallery-caption').value = '';
+        showAchievementPopup('📸 Image Saved!', 'Gallery mein add ho gaya', '🖼️');
+        renderGallery();
+      }
+      btn.textContent = '📤 Upload';
+      btn.disabled = false;
+    };
+    reader.readAsDataURL(file);
+  } catch(e) {
+    btn.textContent = '📤 Upload';
+    btn.disabled = false;
+    alert('Upload failed: ' + e.message);
+  }
+}
+
+async function deleteGalleryItem(id) {
+  if (!confirm('Delete this image?')) return;
+  try {
+    await fetch(`${API_BASE}/api/gallery?uid=${getUID()}&id=${id}`, { method: 'DELETE' });
+    renderGallery();
+  } catch(e) { alert('Delete failed'); }
+}
+
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', async function() {
   await initIndexedDB();
   loadState();
   checkStreakOnLoad();
+
+  // Try cloud sync
+  loadFromCloud().then(synced => {
+    if (synced) {
+      initDashboard();
+      updateXPUI();
+    }
+  });
 
   // Apply saved settings
   if (state.settings.dark) document.body.classList.add('dark');
